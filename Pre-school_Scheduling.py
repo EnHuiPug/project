@@ -1,21 +1,24 @@
 import numpy as np
 import pandas as pd
 from openpyxl import load_workbook
+from random import choice
+
+import matplotlib.pyplot as plt
 
 
-POPULATION_SIZE = 200
-CROSS_RATE = 0.5
-MUTATION_RATE = 0.01
-GENERATIONS = 1000
+POPULATION_SIZE = 500
+CROSS_RATE = 0.8
+MUTATION_RATE = 0.06
+GENERATIONS = 100
 
 # N = 10  # number of students
 CHROMOSOME_LENGTH = 15
 
 
-excel_name = 'input.xlsx'
-d = pd.DataFrame(pd.read_excel(excel_name, usecols='A,F,G,H,AA', names=['ID', 'SEN', 'PRE', 'DoB', 'Hours'], skiprows=[0, 1, 2, 3]))
-d = d.dropna(subset=['ID'])
-d.fillna(0, inplace=True)
+# excel_name = 'input.xlsx'
+# d = pd.DataFrame(pd.read_excel(excel_name, usecols='A,F,G,H,AA', names=['ID', 'SEN', 'PRE', 'DoB', 'Hours'], skiprows=[0, 1, 2, 3]))
+# d = d.dropna(subset=['ID'])
+# d.fillna(0, inplace=True)
 # d2 = d.sort_values(by="DoB", ascending=True, inplace=False)
 
 replace_list = np.array([0, 2, 3, 5, 6, 8, 9, 11, 12, 14])
@@ -143,101 +146,164 @@ class GA:
         self.pop = pop
 
 
+def generate_hours(n, r):
+    result = []
+    candidates = [2.5, -2.5, 1.25, -1.25]
+    for i in range(n):
+        if np.random.rand() < r:
+            result.append(15+choice(candidates))
+        else:
+            result.append(15)
+    return result
+
+
 if __name__ == '__main__':
-    # First part
-    book = load_workbook('input.xlsx')
+    p = np.arange(0, 1.1, 0.1)
+    aa = []
+    bb = []
+    cc = []
+    for i in p:
+        book = load_workbook('input.xlsx')
+        d = pd.DataFrame(generate_hours(33, i))
+        writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
+        writer.book = book
+        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
+        d.to_excel(writer, startrow=26, startcol=26, header=False, index=False)
+        writer.save()
 
-    d3 = d.loc[21:39]
-    d3 = d3.sort_values(by="DoB", ascending=True, inplace=False)
-    d5 = np.arange(0.0, 1.0, 1 / 19).round(2)[::-1]
-    x = d3['SEN']
-    d3['Weight'] = d5 + d3['SEN']
-    N = d3.shape[0]
-    d6 = d3.sort_values(by="ID", ascending=True, inplace=False)
-    constrains = np.array(d6)
-    schdule = np.array(pd.read_excel('input.xlsx', usecols='K:Y', skiprows=[0, 1, 2, 3]))
-    schdule[np.isnan(schdule)] = 0
-    col_constrain = np.sum(schdule, axis=0)
+        # First part
+        book = load_workbook('input.xlsx')
+        excel_name = 'input.xlsx'
+        d = pd.DataFrame(pd.read_excel(excel_name, usecols='A,F,G,H,AA', names=['ID', 'SEN', 'PRE', 'DoB', 'Hours'],
+                                       skiprows=[0, 1, 2, 3]))
+        d = d.dropna(subset=['ID'])
+        d.fillna(0, inplace=True)
 
-    ga = GA(N=N, chromlen=CHROMOSOME_LENGTH, cross_rate=CROSS_RATE,
-            mutation_rate=MUTATION_RATE, pop_size=POPULATION_SIZE,
-            constrains=constrains, col_constrain=col_constrain)
-    for generation in range(GENERATIONS):
-        ga.evolve()
+        d3 = d.loc[21:39]
+        d3 = d3.sort_values(by="DoB", ascending=True, inplace=False)
+        d5 = np.arange(0.0, 10.0, 10 / 19).round(2)[::-1]
+        x = d3['SEN'] * 10
+        d3['Weight'] = d5 + x
+        N = d3.shape[0]
+        d6 = d3.sort_values(by="ID", ascending=True, inplace=False)
+        constrains = np.array(d6)
+        schdule = np.array(pd.read_excel('input.xlsx', usecols='K:Y', skiprows=[0, 1, 2, 3]))
+        schdule[np.isnan(schdule)] = 0
+        col_constrain = np.sum(schdule, axis=0)
 
-    fitness = ga.fitness()
-    maxfitness = max(fitness)
-    idxn = np.argmax(fitness)
-    best = ga.pop[idxn]
-    data = pd.DataFrame(best)
-    writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
-    writer.book = book
-    writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-    data.to_excel(writer, startrow=26, startcol=10, header=False, index=False)
-    writer.save()
+        ga = GA(N=N, chromlen=CHROMOSOME_LENGTH, cross_rate=CROSS_RATE,
+                mutation_rate=MUTATION_RATE, pop_size=POPULATION_SIZE,
+                constrains=constrains, col_constrain=col_constrain)
+        autumn = []
+        for generation in range(GENERATIONS):
+            ga.evolve()
+            fitness = ga.fitness()
+            autumn.append(max(fitness))
 
-    #Second Part
-    book = load_workbook('input.xlsx')
 
-    d3 = d.loc[41:45]
-    d3 = d3.sort_values(by="DoB", ascending=True, inplace=False)
-    d5 = np.arange(0.0, 1.0, 1 / 5).round(2)[::-1]
-    x = d3['SEN']
-    d3['Weight'] = d5 + d3['SEN']
-    N = d3.shape[0]
-    d6 = d3.sort_values(by="ID", ascending=True, inplace=False)
-    constrains = np.array(d6)
-    schdule = np.array(pd.read_excel('input.xlsx', usecols='K:Y', skiprows=[0, 1, 2, 3]))
-    schdule[np.isnan(schdule)] = 0
-    col_constrain = np.sum(schdule, axis=0)
-    print(col_constrain)
-    ga = GA(N=N, chromlen=CHROMOSOME_LENGTH, cross_rate=CROSS_RATE,
-            mutation_rate=MUTATION_RATE, pop_size=POPULATION_SIZE,
-            constrains=constrains, col_constrain=col_constrain)
-    for generation in range(GENERATIONS):
-        ga.evolve()
+        fitness = ga.fitness()
+        maxfitness = max(fitness)
+        aa.append(maxfitness)
+        idxn = np.argmax(fitness)
+        best = ga.pop[idxn]
+        data = pd.DataFrame(best)
+        writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
+        writer.book = book
+        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
+        data.to_excel(writer, startrow=26, startcol=10, header=False, index=False)
+        writer.save()
 
-    fitness = ga.fitness()
-    maxfitness = max(fitness)
-    idxn = np.argmax(fitness)
-    best = ga.pop[idxn]
-    data = pd.DataFrame(best)
-    print(best)
-    writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
-    writer.book = book
-    writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-    data.to_excel(writer, startrow=46, startcol=10, header=False, index=False)
-    writer.save()
+        #Second Part
+        book = load_workbook('input.xlsx')
 
-    #Third Part
-    book = load_workbook('input.xlsx')
+        d3 = d.loc[41:45]
+        d3 = d3.sort_values(by="DoB", ascending=True, inplace=False)
+        d5 = np.arange(0.0, 10.0, 10 / 5).round(2)[::-1]
+        x = d3['SEN'] * 10
+        d3['Weight'] = d5 + x
+        N = d3.shape[0]
+        d6 = d3.sort_values(by="ID", ascending=True, inplace=False)
+        constrains = np.array(d6)
+        schdule = np.array(pd.read_excel('input.xlsx', usecols='K:Y', skiprows=[0, 1, 2, 3]))
+        schdule[np.isnan(schdule)] = 0
+        col_constrain = np.sum(schdule, axis=0)
+        ga = GA(N=N, chromlen=CHROMOSOME_LENGTH, cross_rate=CROSS_RATE,
+                mutation_rate=MUTATION_RATE, pop_size=POPULATION_SIZE,
+                constrains=constrains, col_constrain=col_constrain)
+        spring = []
+        for generation in range(GENERATIONS):
+            ga.evolve()
+            fitness = ga.fitness()
+            spring.append(max(fitness))
 
-    d3 = d.loc[47:54]
-    d3 = d3.sort_values(by="DoB", ascending=True, inplace=False)
-    d5 = np.arange(0.0, 1.0, 1 / 8).round(2)[::-1]
-    x = d3['SEN']
-    d3['Weight'] = d5 + d3['SEN']
-    N = d3.shape[0]
-    d6 = d3.sort_values(by="ID", ascending=True, inplace=False)
-    constrains = np.array(d6)
-    schdule = np.array(pd.read_excel('input.xlsx', usecols='K:Y', skiprows=[0, 1, 2, 3]))
-    schdule[np.isnan(schdule)] = 0
-    col_constrain = np.sum(schdule, axis=0)
-    print(col_constrain)
-    ga = GA(N=N, chromlen=CHROMOSOME_LENGTH, cross_rate=CROSS_RATE,
-            mutation_rate=MUTATION_RATE, pop_size=POPULATION_SIZE,
-            constrains=constrains, col_constrain=col_constrain)
-    for generation in range(GENERATIONS):
-        ga.evolve()
 
-    fitness = ga.fitness()
-    maxfitness = max(fitness)
-    idxn = np.argmax(fitness)
-    best = ga.pop[idxn]
-    data = pd.DataFrame(best)
-    print(best)
-    writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
-    writer.book = book
-    writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-    data.to_excel(writer, startrow=52, startcol=10, header=False, index=False)
-    writer.save()
+        fitness = ga.fitness()
+        maxfitness = max(fitness)
+        bb.append(maxfitness)
+        idxn = np.argmax(fitness)
+        best = ga.pop[idxn]
+        data = pd.DataFrame(best)
+        writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
+        writer.book = book
+        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
+        data.to_excel(writer, startrow=46, startcol=10, header=False, index=False)
+        writer.save()
+
+        #Third Part
+        book = load_workbook('input.xlsx')
+
+        d3 = d.loc[47:54]
+        d3 = d3.sort_values(by="DoB", ascending=True, inplace=False)
+        d5 = np.arange(0.0, 10.0, 10 / 8).round(2)[::-1]
+        x = d3['SEN'] * 10
+        d3['Weight'] = d5 + x
+        N = d3.shape[0]
+        d6 = d3.sort_values(by="ID", ascending=True, inplace=False)
+        constrains = np.array(d6)
+        schdule = np.array(pd.read_excel('input.xlsx', usecols='K:Y', skiprows=[0, 1, 2, 3]))
+        schdule[np.isnan(schdule)] = 0
+        col_constrain = np.sum(schdule, axis=0)
+        ga = GA(N=N, chromlen=CHROMOSOME_LENGTH, cross_rate=CROSS_RATE,
+                mutation_rate=MUTATION_RATE, pop_size=POPULATION_SIZE,
+                constrains=constrains, col_constrain=col_constrain)
+        summer = []
+        for generation in range(GENERATIONS):
+            ga.evolve()
+            fitness = ga.fitness()
+            summer.append(max(fitness))
+
+        fitness = ga.fitness()
+        maxfitness = max(fitness)
+        cc.append(maxfitness)
+        idxn = np.argmax(fitness)
+        best = ga.pop[idxn]
+        data = pd.DataFrame(best)
+        writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
+        writer.book = book
+        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
+        data.to_excel(writer, startrow=52, startcol=10, header=False, index=False)
+        writer.save()
+
+        book = load_workbook('input.xlsx')
+        d = pd.DataFrame(pd.read_excel(excel_name, usecols='K:Y', skiprows=range(1, 26)))
+        x = np.array(d)
+        d.iloc[:, :] = np.nan
+        writer = pd.ExcelWriter('input.xlsx', engine='openpyxl')
+        writer.book = book
+        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
+        d.to_excel(writer, startrow=26, startcol=10, header=False, index=False)
+        writer.save()
+        print(i)
+
+    x = np.linspace(0, 0.1, 11)
+    plt.plot(x, np.array(aa), label='autumn')
+    plt.plot(x, np.array(bb), label='spring')
+    plt.plot(x, np.array(cc), label='summer')
+
+    plt.xlabel('Random generation time required ratio')
+    plt.ylabel('Fitness Score of best individual')
+    plt.title("Generation=100, Population Size=500")
+
+    plt.legend()
+
+    plt.show()
